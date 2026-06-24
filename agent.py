@@ -118,10 +118,10 @@ def _llm(user_prompt: str, *, system: str = "", max_tokens: int = 2000) -> str:
     completion = client.chat.completions.create(
         model=MODEL,
         contents=user_prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=system,
-            max_output_tokens=max_tokens,
-        ),
+        config={
+            "system_instruction": system,
+            "max_output_tokens": max_tokens,
+        },
     )
     return (completion.choices[0].message).strip()
 
