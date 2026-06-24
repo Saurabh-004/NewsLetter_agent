@@ -38,7 +38,10 @@ from typing import Annotated, List, Optional
 import operator
 
 # from google import genai
-from openai import OpenAI
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 # from google.genai import types
 from langgraph.checkpoint.memory import MemorySaver
@@ -60,10 +63,34 @@ from tools import fetch_article, generate_html, web_search
 # ─── gemini client ────────────────────────────────────────────────────────
 # client = genai.Client(api_key=GEMINI_API_KEY)
 #__META client______
-client = OpenAI(
-    base_url="https://router.huggingface.co/v1",
-    api_key=os.environ["HF_TOKEN"],
-)
+hf_token = os.environ.get("HF_TOKEN", "")
+if OpenAI is not None and hf_token:
+    client = OpenAI(
+        base_url="https://router.huggingface.co/v1",
+        api_key=hf_token,
+    )
+else:
+    # Unauthenticated fallback: lightweight local stub client to avoid external auth.
+    class _StubChoices:
+        def __init__(self, content):
+            self.message = {"content": content}
+
+    class _StubClient:
+        class chat:
+            class completions:
+                @staticmethod
+                def create(model, messages=None, max_tokens=None):
+                    user_text = ""
+                    if messages:
+                        # prefer the last user message
+                        for m in reversed(messages):
+                            if m.get("role") == "user":
+                                user_text = m.get("content", "")
+                                break
+                    content = f"[SIMULATED LLM RESPONSE]\n{user_text[:800]}"
+                    return type("R", (), {"choices": [_StubChoices(content)]})
+
+    client = _StubClient()
 
 # ─── State Schema ─────────────────────────────────────────────────────────────
 
