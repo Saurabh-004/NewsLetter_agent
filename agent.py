@@ -114,16 +114,23 @@ def _parse_json(text: str) -> dict:
 
 
 def _llm(user_prompt: str, *, system: str = "", max_tokens: int = 2000) -> str:
-    """Call Gemini via the google-genai SDK."""
+    """Call LLM via OpenAI-compatible client (messages + model required)."""
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": user_prompt})
+
     completion = client.chat.completions.create(
         model=MODEL,
-        contents=user_prompt,
-        config={
-            "system_instruction": system,
-            "max_output_tokens": max_tokens,
-        },
+        messages=messages,
+        max_tokens=max_tokens,
     )
-    return (completion.choices[0].message).strip()
+
+    # Normalize different response shapes
+    msg = completion.choices[0].message
+    if isinstance(msg, dict):
+        return msg.get("content", "").strip()
+    return getattr(msg, "content", str(msg)).strip()
 
 
 # ─── Node 1 — Plan ────────────────────────────────────────────────────────────
