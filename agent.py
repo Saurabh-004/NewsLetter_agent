@@ -37,13 +37,8 @@ from datetime import datetime
 from typing import Annotated, List, Optional
 import operator
 
-# from google import genai
-try:
-    from openai import OpenAI
-except Exception:
-    OpenAI = None
-
-# from google.genai import types
+from google import genai
+from google.genai import types
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
@@ -51,7 +46,7 @@ from typing_extensions import TypedDict
 
 from config import (
     CRITIQUE_THRESHOLD,
-    META_API_KEY,
+    GEMINI_API_KEY,
     MAX_ARTICLES,
     MAX_REVISIONS,
     MODEL,
@@ -61,36 +56,9 @@ from config import (
 from tools import fetch_article, generate_html, web_search
 
 # ─── gemini client ────────────────────────────────────────────────────────
-# client = genai.Client(api_key=GEMINI_API_KEY)
-#__META client______
-hf_token = os.environ.get("HF_TOKEN", "")
-if OpenAI is not None and hf_token:
-    client = OpenAI(
-        base_url="https://router.huggingface.co/v1",
-        api_key=hf_token,
-    )
-else:
-    # Unauthenticated fallback: lightweight local stub client to avoid external auth.
-    class _StubChoices:
-        def __init__(self, content):
-            self.message = {"content": content}
-
-    class _StubClient:
-        class chat:
-            class completions:
-                @staticmethod
-                def create(model, messages=None, max_tokens=None):
-                    user_text = ""
-                    if messages:
-                        # prefer the last user message
-                        for m in reversed(messages):
-                            if m.get("role") == "user":
-                                user_text = m.get("content", "")
-                                break
-                    content = f"[SIMULATED LLM RESPONSE]\n{user_text[:800]}"
-                    return type("R", (), {"choices": [_StubChoices(content)]})
-
-    client = _StubClient()
+# Prefer GEMINI_API_KEY, else let the SDK fallback to GOOGLE_API_KEY.
+client = genai.Client(api_key=GEMINI_API_KEY or None)
+   
 
 # ─── State Schema ─────────────────────────────────────────────────────────────
 
@@ -141,24 +109,28 @@ def _parse_json(text: str) -> dict:
 
 
 def _llm(user_prompt: str, *, system: str = "", max_tokens: int = 2000) -> str:
-    """Call LLM via OpenAI-compatible client (messages + model required)."""
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": user_prompt})
-
-    completion = client.chat.completions.create(
-        model=MODEL,
-        messages=messages,
-        max_tokens=max_tokens,
+    """Call Gemini via google-genai and return the generated text."""
+    cfg = types.GenerateContentConfig(
+        systemInstruction=system if system else None,
+        maxOutputTokens=max_tokens,
     )
 
-    # Normalize different response shapes
-    msg = completion.choices[0].message
-    if isinstance(msg, dict):
-        return msg.get("content", "").strip()
-    return getattr(msg, "content", str(msg)).strip()
-
+    try:
+        response = client.models.generate_content(
+            model=MODEL,
+            contents=user_prompt,
+            config=cfg,
+        )
+        if hasattr(response, "text") and response.text is not None:
+            return response.text.strip()
+        if hasattr(response, "parts") and response.parts:
+            first_part = response.parts[0]
+            if hasattr(first_part, "text"):
+                return first_part.text.strip()
+        return str(response).strip()
+    except Exception as exc:
+        # Keep the host app running even if LLM request fails.
+        return f"[LLM ERROR] {exc}"
 
 # ─── Node 1 — Plan ────────────────────────────────────────────────────────────
 
