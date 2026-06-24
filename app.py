@@ -137,8 +137,8 @@ async def _graph_worker(
                             "score": update.get("critique_score", "N/A"),
                         })
 
-                if not hit_interrupt:
-                    break   # graph completed normally
+            if not hit_interrupt:
+                break
 
     except Exception as exc:
         await log_queue.put({"type": "error", "message": str(exc)})
