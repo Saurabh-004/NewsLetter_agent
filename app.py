@@ -281,4 +281,5 @@ async def serve_frontend():
 if __name__ == "__main__":
     import uvicorn
     os.makedirs(OUTPUT_DIR, exist_ok=True)
-    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=True)
+    reload_flag = os.getenv("UVICORN_RELOAD", "false").lower() in {"1", "true", "yes"}
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, reload=reload_flag)
