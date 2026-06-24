@@ -12,9 +12,12 @@ load_dotenv()
 # ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 # MODEL: str = "claude-sonnet-4-6"
 
+#GEMINI
+GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+MODEL: str = "gemini-3.1-flash-lite"
 # _____META ___________________________________________________________________
-META_API_KEY: str = os.getenv("HF_TOKEN", "")
-MODEL: str = "meta-llama/Llama-3.2-3B-Instruct:fastest"
+# META_API_KEY: str = os.getenv("HF_TOKEN", "")
+# MODEL: str = "meta-llama/Llama-3.2-3B-Instruct:fastest"
 # ─── Agent Behaviour ──────────────────────────────────────────────────────────
 MAX_REVISIONS: int = 2          # Max self-revision loops before forcing output
 CRITIQUE_THRESHOLD: int = 7     # Minimum score (out of 10) to skip revision
