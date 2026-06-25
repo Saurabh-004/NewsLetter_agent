@@ -151,7 +151,7 @@ Examples include:
 
 ### Search
 
-* Tavily Search
+* DuckDuckGO Search No api needed
 
 ### Frontend
 
@@ -201,7 +201,6 @@ Create a `.env` file
 
 ```
 GOOGLE_API_KEY=your_key
-TAVILY_API_KEY=your_key
 ```
 
 Run the application
